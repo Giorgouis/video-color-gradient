@@ -16,7 +16,7 @@ pkg_check_modules(FFmpeg REQUIRED IMPORTED_TARGET
 add_executable(my_app
     src/main.c
 )
-
+target_include_directories(my_app PRIVATE include)
 target_link_libraries(my_app PRIVATE
     PkgConfig::FFmpeg
 )
