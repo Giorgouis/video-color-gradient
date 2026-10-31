@@ -5,6 +5,8 @@
 #include <libavutil/frame.h>
 // #include<libavutil/avutil.h>
 #include<libavformat/avformat.h>
+#include <libswscale/swscale.h>
+#include <libavutil/pixfmt.h>
 
 typedef struct {
     AVDictionary *options;
@@ -18,6 +20,9 @@ typedef struct {
     int state_demux_eof;
     int state_decoder_flush;
     int state_packet_pending;
+
+    struct SwsContext *sws_ctx;
+    AVFrame *rgb_frame;
 } Stream;
 
 void close_stream(Stream *s){
@@ -27,6 +32,11 @@ void close_stream(Stream *s){
     avformat_close_input(&s->fmt_ctx);
     av_dict_free(&s->options);
     s->video_stream_index = -1;
+    s->state_demux_eof = 0;
+    s->state_decoder_flush = 0;
+    s->state_packet_pending = 0;
+    sws_freeContext(s->sws_ctx);
+    av_frame_free(&s->rgb_frame);
 
 }
 int init_stream(Stream *s, const char *filename){
@@ -41,10 +51,13 @@ int init_stream(Stream *s, const char *filename){
     s->state_decoder_flush = 0;
     s-> state_packet_pending = 0;
 
+    s->sws_ctx = NULL;
+    s->rgb_frame = NULL;
+
     int ret = avformat_open_input(&s->fmt_ctx, filename, NULL, NULL);
     if (ret<0) {close_stream(s); return 0;}
 
-    ret = avformat_find_stream_info(&s->fmt_ctx, &s->options);
+    ret = avformat_find_stream_info(s->fmt_ctx, &s->options);
     if (ret<0) {close_stream(s); return 0;}
 
     s->video_stream_index = av_find_best_stream(s->fmt_ctx, AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0);
@@ -64,6 +77,23 @@ int init_stream(Stream *s, const char *filename){
     s->pkt = av_packet_alloc();
     s->frame = av_frame_alloc();
     if (!(s->pkt && s->frame)) {close_stream(s); return 0;}
+
+    s->sws_ctx = sws_getContext(s->dec->width, s->dec->height, s->dec->pix_fmt,
+            s->dec->width, s->dec->height, AV_PIX_FMT_RGB24,SWS_BILINEAR,NULL, NULL, NULL);
+
+    if (!s->sws_ctx) {close_stream(s); return 0;}
+
+    s->rgb_frame = av_frame_alloc();
+
+    if (!s->rgb_frame) {close_stream(s); return 0;}
+
+    s->rgb_frame->format = AV_PIX_FMT_RGB24;
+    s->rgb_frame->width = s->dec->width;
+    s->rgb_frame->height = s->dec->height;
+
+    ret = av_frame_get_buffer(s->rgb_frame, 0);
+
+    if (ret < 0) {close_stream(s); return 0;}
 
     return 1;
 }

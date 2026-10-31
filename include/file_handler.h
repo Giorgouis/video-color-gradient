@@ -6,6 +6,8 @@
 #include<libavcodec/avcodec.h>
 #include <libavutil/frame.h>
 #include<libavformat/avformat.h>
+#include <libswscale/swscale.h>
+#include <libavutil/pixfmt.h>
 
 typedef struct Stream {
     AVDictionary *options;
@@ -18,6 +20,9 @@ typedef struct Stream {
     int state_demux_eof;
     int state_decoder_flush;
     int state_packet_pending;
+
+    struct SwsContext *sws_ctx;
+    AVFrame *rgb_frame;
 } Stream;
 
 void close_stream(Stream *s);
