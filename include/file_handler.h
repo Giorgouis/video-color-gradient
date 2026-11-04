@@ -1,33 +1,43 @@
 #ifndef FILE_HANDLER_G_H
 #define FILE_HANDLER_G_H
 
-#include<string.h>
 #include<stdio.h>
+
 #include<libavcodec/avcodec.h>
 #include <libavutil/frame.h>
+#include<libavutil/error.h>
+// #include<libavutil/avutil.h>
 #include<libavformat/avformat.h>
 #include <libswscale/swscale.h>
-#include <libavutil/pixfmt.h>
 
-typedef struct Stream {
+static char err[AV_ERROR_MAX_STRING_SIZE];
+
+#define return_error(ret) do { \
+        av_make_error_string(err, sizeof(err), ret); \
+        fprintf(stderr, "FFmpeg err: %s\n", err); \
+        return ret; \
+} while (0)
+
+typedef struct Stream{
     AVDictionary *options;
-    AVFormatContext *fmt_ctx;
-    AVCodecContext *dec; 
+    AVFormatContext *fmt_ctx; 
+    AVCodecContext *codec_ctx; 
+    const AVCodec *decoder;
     AVPacket *pkt;
     AVFrame *frame;
     int video_stream_index;
 
-    int state_demux_eof;
-    int state_decoder_flush;
-    int state_packet_pending;
+    int packet_pending;
+    int flush;
+    int flushed;
 
-    struct SwsContext *sws_ctx;
-    AVFrame *rgb_frame;
 } Stream;
 
-void close_stream(Stream *s);
-int init_stream(Stream *s, const char *filename);
-int flush_decoder(Stream *s);
+
+int open_file(const char *filename, Stream *s);
+int next_packet(Stream *s);
+int send_packet(Stream *s);
+int read_packet(Stream *s);
 int read_frame(Stream *s);
 
 #endif // FILE_HANDLER_G_H
