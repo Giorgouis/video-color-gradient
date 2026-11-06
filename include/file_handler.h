@@ -30,6 +30,9 @@ typedef struct Stream{
     int packet_pending;
     int flush;
     int flushed;
+    
+    struct SwsContext *sws_ctx;
+    AVFrame *rgb_frame;
 
 } Stream;
 

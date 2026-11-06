@@ -30,6 +30,9 @@ int open_file(const char *filename, Stream *s){
     s->flush = 0;
     s->flushed = 0;
 
+    s->sws_ctx = NULL;
+    s->rgb_frame = NULL;
+
     // open file
     int ret = avformat_open_input(&s->fmt_ctx, filename, NULL, NULL);
     if (ret<0) return_error(ret);
